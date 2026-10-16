@@ -26,16 +26,6 @@
 @media(max-width:760px){.floating-contact{right:12px;bottom:80px;gap:8px}.float-contact{width:44px;height:44px}.float-contact.install{height:43px;padding:0 13px}.toast{max-width:calc(100% - 28px);line-height:1.4}}
 .push-enable-button{margin-top:16px;display:inline-flex;align-items:center;gap:8px}
 
-/* Google account chooser modal */
-.google-modal-backdrop{position:fixed;inset:0;z-index:120;background:rgba(14,28,19,.62);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
-.google-modal{position:relative;width:min(420px,100%);padding:34px 26px 27px;background:#fff;border-radius:22px;box-shadow:0 24px 80px rgba(0,0,0,.24);text-align:center;color:#26372a}
-.google-modal-close{position:absolute;right:12px;top:12px}
-.google-brand-mark{display:inline-grid;margin:0 auto 16px;width:48px;height:48px;border-radius:15px;background:#315638;color:#fff;place-items:center}
-.google-modal h2{font-family:Manrope,sans-serif;font-size:22px;line-height:1.25;margin:0 0 10px;letter-spacing:-.5px}
-.google-modal p{font-size:13px;line-height:1.6;color:#687366;margin:0 auto 23px;max-width:310px}
-.google-signin-button{display:flex;justify-content:center;min-height:44px;margin:0 auto 20px}
-.google-loading{padding:14px;font-size:13px;color:#687366;margin-bottom:15px}
-.google-modal>small{display:block;font-size:10px;color:#8b9387;line-height:1.5;margin-top:16px}
 .product-modal input[type="file"]{width:100%;padding:12px;border:1px dashed var(--line,#d9e3d8);border-radius:12px;background:var(--surface,#f8faf7);font-size:13px}.product-modal label small{display:block;color:var(--muted,#6d796d);font-size:12px;line-height:1.45;margin-top:6px}.product-image-preview{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line,#e2e8e1);border-radius:12px}.product-image-preview img{width:76px;height:76px;object-fit:cover;border-radius:10px;background:#f1f4ee}.product-image-preview span{font-size:13px;color:var(--muted,#6d796d)}button:disabled{opacity:.55;cursor:not-allowed}
 
 /* KSR Dairy Foods: admin-managed theme, branding and delivery settings */
@@ -101,3 +91,21 @@ body{background:var(--cream)}
 .map-address-picker{margin:0 0 22px;padding:16px;border:1px solid #dfe8d5;border-radius:12px;background:#fbfcf8}.map-address-picker h4{display:flex;align-items:center;gap:8px;margin:0 0 6px;color:#2f5738;font-size:14px}.map-address-picker>p{margin:0 0 13px;color:#778174;font-size:11px;line-height:1.6}.map-search-row{display:flex;gap:8px}.map-search-row input{min-width:0;flex:1;border:1px solid #dce3d6;border-radius:7px;padding:11px;font-size:12px;background:white}.map-search-row .btn{white-space:nowrap;margin:0;font-size:11px;padding:10px}.selected-map-location{display:flex;align-items:center;gap:9px;margin-top:12px;padding:11px;background:#edf5e8;border-radius:8px;color:#2d673d}.selected-map-location span{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}.selected-map-location small{font-size:10px;color:#657663;overflow-wrap:anywhere}.selected-map-location a{font-size:10px;color:#28663b;white-space:nowrap}.map-search-results{display:grid;gap:5px;margin-top:10px}.map-search-results button{display:flex;align-items:center;gap:9px;text-align:left;border:1px solid #e3e8de;border-radius:7px;padding:10px;background:white;color:#3b4d3b;font-size:11px}.map-search-results button span{flex:1}.delivery-to{padding:14px 16px;background:#f3f7ec;border-radius:9px;margin-bottom:16px}.delivery-to p{font-size:12px;line-height:1.5;overflow-wrap:anywhere}.admin-login-form{width:min(100%,360px);margin:20px auto;display:grid;gap:14px;text-align:left}.admin-login-form label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#52604f}.admin-login-form input{border:1px solid #dfe5d9;border-radius:7px;padding:12px;font-size:13px}
 @media(max-width:600px){.map-search-row{flex-direction:column}.map-search-row .btn{width:100%}.map-address-picker{padding:12px}.selected-map-location{align-items:flex-start;flex-wrap:wrap}}
 \n/* Interactive delivery pin map */\n.delivery-leaflet-map{height:300px;width:100%;border:1px solid #dfe5d8;border-radius:12px;overflow:hidden;background:#edf1e7;z-index:1}.map-pin-help{font-size:12px!important;color:#64735f!important;margin:8px 0 12px!important;line-height:1.5}.map-address-picker .leaflet-container{font:inherit}.map-address-picker .leaflet-control-attribution{font-size:9px}\n@media(max-width:600px){.delivery-leaflet-map{height:260px}}\n
+/* Admin dashboard and category management */
+.admin-header{background:var(--green);border-bottom-color:#ffffff20;color:#fff}
+.admin-header .brand,.admin-header .brand small,.admin-header .desktop-nav button,.admin-header .icon-btn{color:#fff}
+.admin-header .brand-mark{background:#dce8a7}
+.admin-header .brand b{color:#fff}
+.admin-header .desktop-nav button.active{color:#dce8a7}
+.admin-page-title{padding-top:42px}
+.admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 26px}
+.admin-tabs button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:12px 17px;font-weight:700;color:#5e685f}
+.admin-tabs button.selected{background:var(--green);color:#fff;border-color:var(--green)}
+.category-add-row{display:flex;gap:10px;margin:18px 0 24px}
+.category-add-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:13px}
+.category-admin-list{display:grid;gap:10px}
+.category-admin-list>div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.category-admin-list .btn{padding:9px 12px}
+.delivery-time-field>strong{display:block;margin-bottom:9px;color:#2d3f31;font-size:13px}
+@media(max-width:760px){.admin-header .header-inner{padding:0 14px;gap:10px}.admin-header .desktop-nav{gap:8px;overflow-x:auto}.admin-header .desktop-nav button{font-size:11px;white-space:nowrap}.admin-header .mobile-menu{display:none}.category-add-row{flex-direction:column}.admin-tabs button{flex:1}.admin-page-title{padding-top:28px}}
+\n.delivery-time-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.delivery-time-choice{background:#fff;border:1px solid var(--line);border-radius:10px;padding:13px;text-align:left;color:#405044;font-size:12px;font-weight:700;line-height:1.5}.delivery-time-choice.selected{background:#edf4e2;border-color:var(--green);box-shadow:0 0 0 1px var(--green)}\n

@@ -1,11 +1,10 @@
 export async function api(path, options = {}) {
+  const token = sessionStorage.getItem("ksr-admin-token");
   const res = await fetch(path, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...((sessionStorage.getItem("ksr-admin-token") || sessionStorage.getItem("ksr-google-credential"))
-        ? { Authorization: `Bearer ${sessionStorage.getItem("ksr-admin-token") || sessionStorage.getItem("ksr-google-credential")}` }
-        : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     }
   });

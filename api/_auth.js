@@ -1,4 +1,3 @@
-import { OAuth2Client } from "google-auth-library";
 import crypto from "node:crypto";
 import { ADMIN_SESSION_SECRET } from "./_admin-config.js";
 function secret(){ return ADMIN_SESSION_SECRET; }
@@ -17,7 +16,6 @@ function adminFromToken(token){
 export async function verifiedUser(req){
   const header=req.headers.authorization||""; const token=header.startsWith("Bearer ")?header.slice(7):"";
   const admin=adminFromToken(token); if(admin) return admin;
-  if(!token||!process.env.GOOGLE_CLIENT_ID) return null;
-  try { const client=new OAuth2Client(process.env.GOOGLE_CLIENT_ID); const ticket=await client.verifyIdToken({idToken:token,audience:process.env.GOOGLE_CLIENT_ID}); const p=ticket.getPayload(); if(!p?.email||!p.email_verified) return null; return {id:p.sub,name:p.name||"",email:p.email,isAdmin:false,authType:"google"}; } catch { return null; }
+  return null;
 }
 export async function requireAdmin(req,res){ const user=await verifiedUser(req); if(!user?.isAdmin){res.status(403).json({error:"Admin username/password sign-in required"});return null;} return user; }

@@ -1,4 +1,5 @@
 import { getDb } from "./_db.js";
+import crypto from "node:crypto";
 import { defaultSettings } from "./settings.js";
 import { verifiedUser, requireAdmin } from "./_auth.js";
 import { sendPushToEmails } from "./_push.js";
@@ -8,6 +9,11 @@ export default async function handler(req,res){
     if(req.method==="POST"){
       const o=req.body||{};
       if(!o.id||!Array.isArray(o.items)||!o.items.length||!o.customer?.name||!o.customer?.phone||!o.customer?.address) return res.status(400).json({error:"Order details are incomplete"});
+      const keySecret=process.env.RAZORPAY_KEY_SECRET;
+      if(!keySecret||!o.razorpayOrderId||!o.razorpayPaymentId||!o.razorpaySignature) return res.status(402).json({error:"Verified online payment is required before placing an order."});
+      const expectedSignature=crypto.createHmac("sha256",keySecret).update(`${o.razorpayOrderId}|${o.razorpayPaymentId}`).digest("hex");
+      const expectedBuffer=Buffer.from(expectedSignature), providedBuffer=Buffer.from(String(o.razorpaySignature));
+      if(expectedBuffer.length!==providedBuffer.length||!crypto.timingSafeEqual(expectedBuffer,providedBuffer)) return res.status(402).json({error:"Online payment verification failed."});
       const settingsDoc=await db.collection("appSettings").findOne({_id:"main"});
       const settings={...defaultSettings,...(settingsDoc?.settings||{})};
       const phone=String(o.customer.phone).replace(/[^0-9]/g,"");
@@ -17,6 +23,14 @@ export default async function handler(req,res){
       const isFirstOrder=!prior; const subtotal=Math.max(0,Number(o.subtotal)||0); const delivery=isFirstOrder&&settings.firstOrderFree?0:Math.max(0,Number(settings.deliveryFee)||0);
       const order={...o,id:String(o.id),subtotal,delivery,total:subtotal+delivery,status:"Order received",firstOrder:isFirstOrder,customer:{...o.customer,name:String(o.customer.name).trim(),phone:String(o.customer.phone).trim(),email},email,createdAt:new Date(o.createdAt||Date.now())};
       if(!order.deliverySlot||!/^\d{4}-\d{2}-\d{2}\|(morning|evening)$/.test(String(order.deliverySlot))) return res.status(400).json({error:"Please choose a valid delivery time slot."});
+      const keyId=process.env.RAZORPAY_KEY_ID, razorpaySecret=process.env.RAZORPAY_KEY_SECRET;
+      const paymentCheck=await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(String(o.razorpayOrderId))}`,{headers:{Authorization:"Basic "+Buffer.from(`${keyId}:${razorpaySecret}`).toString("base64")}});
+      const paymentOrder=await paymentCheck.json();
+      if(!paymentCheck.ok||Number(paymentOrder.amount)!==Math.round(Number(order.total)*100)||paymentOrder.currency!=="INR") return res.status(402).json({error:"Payment amount does not match this order. Please try checkout again."});
+      const paymentCheckResponse=await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(String(o.razorpayPaymentId))}`,{headers:{Authorization:"Basic "+Buffer.from(`${keyId}:${razorpaySecret}`).toString("base64")}});
+      const paymentDetails=await paymentCheckResponse.json();
+      if(!paymentCheckResponse.ok||paymentDetails.status!=="captured"||paymentDetails.order_id!==o.razorpayOrderId||Number(paymentDetails.amount)!==Math.round(Number(order.total)*100)) return res.status(402).json({error:"Payment is not captured for this order."});
+      order.payment="Online payment";order.paymentVerified=true;
       await col.insertOne(order);
       try {
         const admins = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);

@@ -4,16 +4,16 @@ React + Vite storefront with MongoDB-backed products/orders/profiles, private `/
 
 ## Included
 - Customer storefront, product search, cart, checkout, order tracking and profile.
-- Private admin at `/admin`; no admin link appears in customer navigation. Admin signs in using server-only values in `api/_admin-config.js` (or overriding Vercel environment variables); customer Google sign-in is separate.
+- Private admin at `/admin`; no admin link appears in customer navigation. Admin signs in using server-only values in `api/_admin-config.js` (or overriding Vercel environment variables); customer sign-in is not required to place an order.
 - Accept/reject orders and update order status in admin.
 - Web Push notifications: new orders notify subscribed admins; status changes notify subscribed customers. Push can arrive when the site is closed if the browser/device permits it and the user has granted notification permission.
 - PWA manifest, service worker and KSR Dairy Foods home-screen icon. “Download App” prompts browser installation; it installs the website as an app, it does not download an APK.
 - Floating WhatsApp and call shortcuts for **+91 70363 73186**. WhatsApp opens a pre-filled message; the customer taps Send themselves. The call shortcut opens the phone dialer.
-- Customer profile and order data are saved in MongoDB when configured.
+- Customer profile and order data are saved in MongoDB when configured. Cash on delivery is removed; checkout uses Razorpay online payment and requires payment keys. Categories can be added and removed in Admin → Categories. 
 - Admin can upload product photos and the website logo directly from a phone/computer in `/admin`. Photos are compressed in the browser and stored in MongoDB GridFS; products and branding save database-backed image URLs. No separate image-hosting account is required.
 - Admin Website settings edit first-order free delivery promotion, delivery fee, daily morning/evening slots, green/white theme, homepage morning/evening text, header logo/browser icon and customer-care hours. Settings are saved in MongoDB and customers refresh/poll for updates.
 - Delivery slot choices use the current local time: before morning delivery starts both same-day windows are offered; after morning starts only the upcoming evening window; after the evening window closes the next day’s morning and evening are offered.
-- Google sign-in opens the official Google account chooser for customers and returns them to the home page. Admin login at `/admin` uses username/password only.
+-  Admin login at `/admin` uses username/password only; customers can place orders without signing in.
 
 ## Admin login defaults (change before production)
 
@@ -31,18 +31,21 @@ Set these in Vercel (or your Node hosting) and redeploy:
 ```env
 MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/ksr_dairy?retryWrites=true&w=majority
 MONGODB_DB=ksr_dairy
-GOOGLE_CLIENT_ID=your-google-oauth-web-client-id.apps.googleusercontent.com
 ADMIN_EMAILS=admin@example.com
 ADMIN_USERNAME=choose-a-username
 ADMIN_PASSWORD=use-a-long-random-password
 ADMIN_SESSION_SECRET=use-a-different-long-random-secret
+RAZORPAY_KEY_ID=rzp_live_your_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 VAPID_PUBLIC_KEY=generated_public_key
 VAPID_PRIVATE_KEY=generated_private_key
 VAPID_SUBJECT=mailto:admin@example.com
 ```
 
-### Login setup
-`GOOGLE_CLIENT_ID` is for customer Google sign-in only. Admin login at `/admin` uses `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and a separate strong `ADMIN_SESSION_SECRET`; keep these server-side in the hosting dashboard. `ADMIN_EMAILS` is an optional recipient list for admin push notifications, not an admin login allowlist. Never put a Google client secret or admin password in frontend code.
+### Online payment setup
+1. Create a Razorpay account and activate payments.
+2. Add `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` in Vercel → Project → Settings → Environment Variables. Use test keys until you are ready for live payments.
+3. Redeploy the project. Orders are only saved after Razorpay returns a successful payment and the server verifies the signature.
 
 ### Enable website push notifications (no Resend/email)
 1. Install dependencies: `npm install`.
@@ -50,7 +53,7 @@ VAPID_SUBJECT=mailto:admin@example.com
 3. Copy the generated public key to `VAPID_PUBLIC_KEY` and private key to `VAPID_PRIVATE_KEY` in hosting environment variables. Set `VAPID_SUBJECT` to a contact email address (this is just the Web Push protocol contact, not an email notification service).
 4. Deploy/redeploy the website after setting the variables.
 5. Open the live HTTPS website on the admin's phone/computer, sign in at `/admin`, and tap the bell button to enable browser notifications. Keep notifications allowed in device/browser settings.
-6. Customers sign in with Google and tap the bell button to enable notifications. The order email on the order must match the signed-in email for status pushes to be routed to that customer's browser.
+6. Customers may enable browser notifications where supported. Status notifications require a matching email and supported customer authentication.
 
 The site does not run a permanent process in the background. The browser's service worker receives push events and displays notifications when supported. Notifications require HTTPS, a supported browser, permission, a working deployment and VAPID keys. On iPhone, users generally need to add the site to the Home Screen and allow notifications.
 
@@ -79,7 +82,7 @@ npm run dev
 
 The development command uses `vercel dev` so `/api/*` endpoints work locally as well as the React site. Admin sign-in will not work with the example placeholder values: edit `.env` and set `MONGODB_URI`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` first. The admin username/password are the values you choose in `.env`; they are not preset by this project. Do not upload `.env` or share it publicly.
 
-For push notifications, localhost is generally treated as a secure context; on a deployed site use HTTPS. MongoDB Atlas must permit network access from your hosting environment. This project was packaged for deployment, but a live deployment and push delivery cannot be verified until your own Google, MongoDB, VAPID and hosting settings are configured.
+For push notifications, localhost is generally treated as a secure context; on a deployed site use HTTPS. MongoDB Atlas must permit network access from your hosting environment. This project was packaged for deployment, but a live deployment and push delivery cannot be verified until your MongoDB, Razorpay, VAPID and hosting settings are configured.
 
 ## White-screen fix in this replacement
 The initial render now calculates `isAdmin` before any React effects use it. This avoids a JavaScript temporal-dead-zone error in the effect dependency array that could stop the app from rendering. A React error boundary also shows a recovery message instead of a completely blank page if a different rendering error occurs. After replacing the project, redeploy with a fresh build (clear the hosting build cache if the old blank screen persists).
