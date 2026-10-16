@@ -4,7 +4,7 @@ React + Vite storefront with MongoDB-backed products/orders/profiles, private `/
 
 ## Included
 - Customer storefront, product search, cart, checkout, order tracking and profile.
-- Private admin at `/admin`; no admin link appears in customer navigation. Admin signs in using `ADMIN_USERNAME` and `ADMIN_PASSWORD`; customer Google sign-in is separate.
+- Private admin at `/admin`; no admin link appears in customer navigation. Admin signs in using server-only values in `api/_admin-config.js` (or overriding Vercel environment variables); customer Google sign-in is separate.
 - Accept/reject orders and update order status in admin.
 - Web Push notifications: new orders notify subscribed admins; status changes notify subscribed customers. Push can arrive when the site is closed if the browser/device permits it and the user has granted notification permission.
 - PWA manifest, service worker and KSR Dairy Foods home-screen icon. “Download App” prompts browser installation; it installs the website as an app, it does not download an APK.
@@ -14,6 +14,16 @@ React + Vite storefront with MongoDB-backed products/orders/profiles, private `/
 - Admin Website settings edit first-order free delivery promotion, delivery fee, daily morning/evening slots, green/white theme, homepage morning/evening text, header logo/browser icon and customer-care hours. Settings are saved in MongoDB and customers refresh/poll for updates.
 - Delivery slot choices use the current local time: before morning delivery starts both same-day windows are offered; after morning starts only the upcoming evening window; after the evening window closes the next day’s morning and evening are offered.
 - Google sign-in opens the official Google account chooser for customers and returns them to the home page. Admin login at `/admin` uses username/password only.
+
+## Admin login defaults (change before production)
+
+The server-only file `api/_admin-config.js` contains fallback credentials so `/admin` can be tested without configuring three environment variables first:
+- Username: `ksradmin`
+- Password: `KSR-Dairy@2026`
+
+Change the username, password, and session secret in that file before public launch. **Keep the GitHub repository PRIVATE** if using source-code defaults; anyone with repository access can read them. The session secret is server-only and is never bundled into the browser. You can instead override all three with Vercel Environment Variables, which is safer. Products/orders/settings still require a working MongoDB Atlas connection.
+
+The checkout now includes an interactive OpenStreetMap: tap to drop a pin or drag the pin to adjust the exact delivery point. The browser location button is optional; customers can search or pick the pin manually.
 
 ## Required hosting environment variables
 Set these in Vercel (or your Node hosting) and redeploy:

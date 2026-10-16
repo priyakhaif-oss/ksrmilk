@@ -1,10 +1,11 @@
 import { OAuth2Client } from "google-auth-library";
 import crypto from "node:crypto";
-function secret(){ return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PASSWORD || ""; }
+import { ADMIN_SESSION_SECRET } from "./_admin-config.js";
+function secret(){ return ADMIN_SESSION_SECRET; }
 function safeEqual(a,b){ const aa=Buffer.from(String(a)); const bb=Buffer.from(String(b)); return aa.length===bb.length && crypto.timingSafeEqual(aa,bb); }
 function sign(value){ return crypto.createHmac("sha256",secret()).update(value).digest("base64url"); }
 export function createAdminToken(username){
-  if(!secret()) throw new Error("Set ADMIN_SESSION_SECRET (or ADMIN_PASSWORD) in hosting settings");
+  if(!secret()) throw new Error("Admin session secret is missing from server configuration");
   const payload=Buffer.from(JSON.stringify({sub:username,exp:Date.now()+12*60*60*1000})).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
