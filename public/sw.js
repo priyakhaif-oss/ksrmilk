@@ -6,8 +6,8 @@ self.addEventListener('push', event => {
   const title = data.title || 'KSR Dairy Foods';
   const options = {
     body: data.body || 'There is an update on your order.',
-    icon: '/icons/ksr-192.png',
-    badge: '/icons/ksr-192.png',
+    icon: data.icon || '/icons/ksr-192.png',
+    badge: data.icon || '/icons/ksr-192.png',
     data: { url: data.url || '/' },
     tag: data.tag || 'ksr-update',
     renotify: true

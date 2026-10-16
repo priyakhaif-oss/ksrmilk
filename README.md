@@ -4,14 +4,16 @@ React + Vite storefront with MongoDB-backed products/orders/profiles, private `/
 
 ## Included
 - Customer storefront, product search, cart, checkout, order tracking and profile.
-- Private admin at `/admin`; no admin link appears in customer navigation. Admin must sign in with a Google account listed in `ADMIN_EMAILS`.
+- Private admin at `/admin`; no admin link appears in customer navigation. Admin signs in using `ADMIN_USERNAME` and `ADMIN_PASSWORD`; customer Google sign-in is separate.
 - Accept/reject orders and update order status in admin.
 - Web Push notifications: new orders notify subscribed admins; status changes notify subscribed customers. Push can arrive when the site is closed if the browser/device permits it and the user has granted notification permission.
 - PWA manifest, service worker and KSR Dairy Foods home-screen icon. “Download App” prompts browser installation; it installs the website as an app, it does not download an APK.
 - Floating WhatsApp and call shortcuts for **+91 70363 73186**. WhatsApp opens a pre-filled message; the customer taps Send themselves. The call shortcut opens the phone dialer.
 - Customer profile and order data are saved in MongoDB when configured.
-- Admin can upload real product photos directly from a phone/computer in `/admin` → Products. Photos are compressed in the browser and stored as binary files in MongoDB GridFS; products save a permanent database-backed image URL. No separate image-hosting account is required.
-- Google sign-in opens an explicit Google sign-in dialog with the official Google account chooser/button; after successful sign-in, customers return to the home page. Admins signing in from `/admin` return to the admin portal.
+- Admin can upload product photos and the website logo directly from a phone/computer in `/admin`. Photos are compressed in the browser and stored in MongoDB GridFS; products and branding save database-backed image URLs. No separate image-hosting account is required.
+- Admin Website settings edit first-order free delivery promotion, delivery fee, daily morning/evening slots, green/white theme, homepage morning/evening text, header logo/browser icon and customer-care hours. Settings are saved in MongoDB and customers refresh/poll for updates.
+- Delivery slot choices use the current local time: before morning delivery starts both same-day windows are offered; after morning starts only the upcoming evening window; after the evening window closes the next day’s morning and evening are offered.
+- Google sign-in opens the official Google account chooser for customers and returns them to the home page. Admin login at `/admin` uses username/password only.
 
 ## Required hosting environment variables
 Set these in Vercel (or your Node hosting) and redeploy:
@@ -21,13 +23,16 @@ MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/ksr_dairy?retryW
 MONGODB_DB=ksr_dairy
 GOOGLE_CLIENT_ID=your-google-oauth-web-client-id.apps.googleusercontent.com
 ADMIN_EMAILS=admin@example.com
+ADMIN_USERNAME=choose-a-username
+ADMIN_PASSWORD=use-a-long-random-password
+ADMIN_SESSION_SECRET=use-a-different-long-random-secret
 VAPID_PUBLIC_KEY=generated_public_key
 VAPID_PRIVATE_KEY=generated_private_key
 VAPID_SUBJECT=mailto:admin@example.com
 ```
 
-### Why only one Google Client ID now?
-Use **one** Google OAuth Web Client ID in `GOOGLE_CLIENT_ID`. The Vite build reuses the same public client ID for the browser login, while the API uses it to verify the Google credential. It is normal for the ID to be visible in website code; never put a Google *client secret* in the frontend. In Google Cloud Console, add the deployed website domain under Authorized JavaScript origins.
+### Login setup
+`GOOGLE_CLIENT_ID` is for customer Google sign-in only. Admin login at `/admin` uses `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and a separate strong `ADMIN_SESSION_SECRET`; keep these server-side in the hosting dashboard. `ADMIN_EMAILS` is an optional recipient list for admin push notifications, not an admin login allowlist. Never put a Google client secret or admin password in frontend code.
 
 ### Enable website push notifications (no Resend/email)
 1. Install dependencies: `npm install`.
@@ -42,7 +47,7 @@ The site does not run a permanent process in the background. The browser's servi
 ## Upload real product photos directly in Admin (recommended)
 
 1. Configure MongoDB Atlas and deploy the website over HTTPS.
-2. Sign in with an email included in `ADMIN_EMAILS`, then open `/admin` → **Products**.
+2. Sign in at `/admin` using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` configured in hosting, then open **Products**.
 3. Click **Add product** or the pencil icon on an existing product.
 4. Under **Upload product photo to MongoDB**, choose a real photo from your phone/computer.
 5. Wait for the success message and image preview, then click **Save product**.
@@ -65,3 +70,9 @@ For push notifications, localhost is generally treated as a secure context; on a
 
 ## White-screen fix in this replacement
 The initial render now calculates `isAdmin` before any React effects use it. This avoids a JavaScript temporal-dead-zone error in the effect dependency array that could stop the app from rendering. A React error boundary also shows a recovery message instead of a completely blank page if a different rendering error occurs. After replacing the project, redeploy with a fresh build (clear the hosting build cache if the old blank screen persists).
+
+
+## Admin-managed website settings
+Open `/admin` and sign in with the username/password from the hosting environment. Choose **Website settings** to edit the free-first-order delivery promotion, delivery fee, morning/evening times, logo/favicon image, green theme colors, homepage message and customer-care hours. Uploads are stored in MongoDB GridFS. Save the settings to publish them; the storefront polls for settings while customers browse.
+
+Default delivery slots are morning 6 AM–9 AM and evening 6 PM–8 PM. Available slots are filtered against local device time. First-order free delivery is also checked server-side using the phone number and/or email on prior orders, so the server determines the final order total. Keep regular MongoDB backups.

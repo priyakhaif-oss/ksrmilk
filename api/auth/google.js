@@ -10,8 +10,7 @@ export default async function handler(req,res){
     const ticket=await client.verifyIdToken({idToken:credential,audience:clientId});
     const p=ticket.getPayload();
     if(!p?.email||!p.email_verified) return res.status(401).json({error:"Google account email is not verified"});
-    const admins=(process.env.ADMIN_EMAILS||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
-    const user={id:p.sub,name:p.name||"",email:p.email,picture:p.picture||"",isAdmin:admins.includes(p.email.toLowerCase())};
+    const user={id:p.sub,name:p.name||"",email:p.email,picture:p.picture||"",isAdmin:false,authType:"google"};
     try{
       const db=await getDb();
       await db.collection("users").updateOne({id:user.id},{$set:{...user,lastLoginAt:new Date()}},{upsert:true});

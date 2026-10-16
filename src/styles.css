@@ -37,3 +37,50 @@
 .google-loading{padding:14px;font-size:13px;color:#687366;margin-bottom:15px}
 .google-modal>small{display:block;font-size:10px;color:#8b9387;line-height:1.5;margin-top:16px}
 .product-modal input[type="file"]{width:100%;padding:12px;border:1px dashed var(--line,#d9e3d8);border-radius:12px;background:var(--surface,#f8faf7);font-size:13px}.product-modal label small{display:block;color:var(--muted,#6d796d);font-size:12px;line-height:1.45;margin-top:6px}.product-image-preview{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line,#e2e8e1);border-radius:12px}.product-image-preview img{width:76px;height:76px;object-fit:cover;border-radius:10px;background:#f1f4ee}.product-image-preview span{font-size:13px;color:var(--muted,#6d796d)}button:disabled{opacity:.55;cursor:not-allowed}
+
+/* KSR Dairy Foods: admin-managed theme, branding and delivery settings */
+:root{--green:#176b3a;--green2:#2f8a50;--cream:#ffffff;--line:#e5eee7}
+body{background:var(--cream)}
+.header{background:rgba(255,255,255,.96)}
+.brand-mark{overflow:hidden;flex-shrink:0}
+.brand-mark img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}
+.logo-stamp{background:#fff;border:2px solid #dce8a7;overflow:hidden;padding:9px;transform:rotate(0)}
+.logo-stamp img{width:100%;height:100%;object-fit:contain;border-radius:50%}
+.admin-login-form{width:min(100%,380px);display:grid;gap:14px;text-align:left;margin:22px auto}
+.admin-login-form label,.settings-panel label{display:grid;gap:7px;color:#405347;font-size:12px;font-weight:700}
+.admin-login-form input,.settings-panel input:not([type=checkbox]):not([type=color]):not([type=file]),.settings-panel select,.settings-panel textarea{width:100%;min-height:43px;border:1px solid #dce6dd;border-radius:8px;padding:10px 12px;background:#fff;color:#243a2c}
+.admin-login-form input:focus,.settings-panel input:focus,.settings-panel select:focus,.settings-panel textarea:focus{outline:2px solid #9ac6a7;outline-offset:1px}
+.settings-panel{display:grid;gap:18px;max-width:100%;margin-top:20px}
+.settings-panel h4{margin:8px 0 -8px;color:var(--green);font-size:15px}
+.settings-panel .form-grid{margin-bottom:0}
+.settings-panel input[type=color]{width:100%;height:44px;border:1px solid #dce6dd;border-radius:8px;padding:4px;background:#fff}
+.settings-panel input[type=file]{font-size:12px;max-width:100%}
+.settings-panel small,.settings-help{font-size:11px;line-height:1.6;color:#78867b;font-weight:400}
+.settings-help{margin:-8px 0 0}
+.settings-panel .checkbox-setting{display:flex;align-items:center;gap:10px;min-height:44px}
+.settings-panel .checkbox-setting input{width:18px;height:18px;accent-color:var(--green)}
+.settings-logo-preview{display:flex;align-items:center;gap:14px;padding:12px;border:1px solid #e1eae2;border-radius:10px;background:#fff}
+.settings-logo-preview img{width:72px;height:72px;object-fit:contain;border-radius:12px;background:#f7faf7}
+.settings-logo-preview span{font-size:12px;color:#5c6d60}
+.shipping-hint{color:var(--green);font-size:12px;font-weight:700}
+.delivery-note{background:#f1f8f2;border-color:#dcebdd}
+.admin-order small{display:block;margin-top:5px}
+@media(max-width:650px){.settings-panel{padding:16px}.settings-panel .form-grid{grid-template-columns:1fr}.settings-panel .span-two{grid-column:auto}.admin-login-form{width:100%}.logo-stamp{width:76px;height:76px}}
+.order-delivery-time{display:block;margin-top:5px;color:#6e806f;font-size:10px;line-height:1.5;max-width:280px}
+/* Stronger green-and-white storefront palette */
+.header{background:var(--green);border-bottom-color:var(--green);box-shadow:0 4px 18px #153b2417}
+.header .brand{color:#fff}
+.header .brand em{color:#dce8a7}
+.header .brand small{color:#d9e8dc}
+.header .brand-mark{background:#fff;color:var(--green)}
+.header .desktop-nav button{color:#e4f0e6}
+.header .desktop-nav button.active,.header .desktop-nav button:hover{color:#fff;text-decoration:underline;text-underline-offset:7px}
+.header .icon-btn{color:#fff}
+.header .icon-btn:hover{background:#ffffff20}
+.header .cart-button{background:#fff;color:var(--green)}
+.header .cart-button b{background:var(--green);color:#fff}
+.trust-strip{background:var(--green);color:#fff;border-radius:0;padding-top:23px;padding-bottom:23px}
+.trust-strip b,.trust-strip small{color:#fff}
+.trust-strip small{opacity:.78}
+.trust-icon{background:#ffffff1c;color:#e3efc4}
+.hero{background:linear-gradient(120deg,#edf7ef 0%,#ffffff 70%)}

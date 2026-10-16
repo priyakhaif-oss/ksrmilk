@@ -1,4 +1,5 @@
 import { getDb } from "./_db.js";
+import { defaultSettings } from "./settings.js";
 import { verifiedUser, requireAdmin } from "./_auth.js";
 import { sendPushToEmails } from "./_push.js";
 export default async function handler(req,res){
@@ -7,11 +8,19 @@ export default async function handler(req,res){
     if(req.method==="POST"){
       const o=req.body||{};
       if(!o.id||!Array.isArray(o.items)||!o.items.length||!o.customer?.name||!o.customer?.phone||!o.customer?.address) return res.status(400).json({error:"Order details are incomplete"});
-      const order={...o,id:String(o.id),status:"Order received",customer:{...o.customer,name:String(o.customer.name).trim(),phone:String(o.customer.phone).trim()},createdAt:new Date(o.createdAt||Date.now())};
+      const settingsDoc=await db.collection("appSettings").findOne({_id:"main"});
+      const settings={...defaultSettings,...(settingsDoc?.settings||{})};
+      const phone=String(o.customer.phone).replace(/[^0-9]/g,"");
+      const email=String(o.email||o.customer.email||"").trim().toLowerCase();
+      const identityChecks=[]; if(phone) identityChecks.push({"customer.phone":{$regex:phone.slice(-10).split("").join("[^0-9]*")+"[^0-9]*$"}}); if(email) identityChecks.push({email});
+      const prior=identityChecks.length?await col.findOne({$or:identityChecks},{projection:{_id:1}}):null;
+      const isFirstOrder=!prior; const subtotal=Math.max(0,Number(o.subtotal)||0); const delivery=isFirstOrder&&settings.firstOrderFree?0:Math.max(0,Number(settings.deliveryFee)||0);
+      const order={...o,id:String(o.id),subtotal,delivery,total:subtotal+delivery,status:"Order received",firstOrder:isFirstOrder,customer:{...o.customer,name:String(o.customer.name).trim(),phone:String(o.customer.phone).trim(),email},email,createdAt:new Date(o.createdAt||Date.now())};
+      if(!order.deliverySlot||!/^\d{4}-\d{2}-\d{2}\|(morning|evening)$/.test(String(order.deliverySlot))) return res.status(400).json({error:"Please choose a valid delivery time slot."});
       await col.insertOne(order);
       try {
         const admins = (process.env.ADMIN_EMAILS || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
-        await sendPushToEmails(admins, { title: 'New KSR Dairy Foods order', body: `Order ${order.id} from ${order.customer.name} · ₹${Number(order.total || 0)}`, url: '/admin', tag: `order-${order.id}` });
+        await sendPushToEmails(admins, { title: 'New KSR Dairy Foods order', body: `Order ${order.id} from ${order.customer.name} · ₹${Number(order.total || 0)}`, url: '/admin', tag: `order-${order.id}`, icon: settings.logoImage });
       } catch (e) { /* order remains saved even if push delivery fails */ }
       return res.status(201).json({order});
     }
@@ -30,7 +39,7 @@ export default async function handler(req,res){
       await col.updateOne({id:String(id)},{$set:{status,updatedAt:new Date(),statusUpdatedBy:admin.email}});
       try {
         const recipient = String(order.email || order.customer?.email || '').trim().toLowerCase();
-        if (recipient) await sendPushToEmails([recipient], { title: 'KSR Dairy Foods order update', body: `Order ${order.id}: ${status}`, url: '/', tag: `order-${order.id}-${status}` });
+        if (recipient) { const currentSettings=await db.collection("appSettings").findOne({_id:"main"}); const logo=currentSettings?.settings?.logoImage||"/icons/ksr-192.png"; await sendPushToEmails([recipient], { title: 'KSR Dairy Foods order update', body: `Order ${order.id}: ${status}`, url: '/', tag: `order-${order.id}-${status}`, icon: logo }); }
       } catch (e) { /* order status remains saved if push delivery fails */ }
       return res.status(200).json({ok:true,notificationQueued:true});
     }
