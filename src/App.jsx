@@ -31,6 +31,8 @@ function App(){
   const [installPrompt,setInstallPrompt] = useState(null);
   const [pushEnabled,setPushEnabled] = useState(false);
   const [notifications,setNotifications] = useState(()=>getStore("ksr-notifications",[]));
+  // Derive this before effects: the dependency arrays are evaluated during render.
+  const isAdmin = !!user && !!user.isAdmin;
 
   useEffect(()=>{ setStore("ksr-cart",cart); },[cart]);
   useEffect(()=>{ setStore("ksr-orders",orders); },[orders]);
@@ -38,7 +40,7 @@ function App(){
   useEffect(()=>{ setStore("ksr-user",user); },[user]);
   useEffect(()=>{ setStore("ksr-notifications",notifications); },[notifications]);
   useEffect(()=>{ if(window.location.pathname==="/admin") setPage("admin"); },[]);
-  useEffect(()=>{ if(page==="admin" && user && !isAdmin){ window.history.replaceState({},"","/"); setPage("home"); notify("Admin access required"); } },[page,user]);
+  useEffect(()=>{ if(page==="admin" && user && !isAdmin){ window.history.replaceState({},"","/"); setPage("home"); notify("Admin access required"); } },[page,user,isAdmin]);
   useEffect(()=>{ if(page!=="admin" || !isAdmin) return; let active=true; api("/api/orders").then(d=>{if(active&&d.orders) setOrders(d.orders);}).catch(e=>notify(e.message||"Could not load server orders")); return ()=>{active=false;}; },[page,isAdmin]);
   useEffect(()=>{ if(!user?.email) return; let active=true; const refresh=async()=>{ try { const d=await api(`/api/orders?email=${encodeURIComponent(user.email)}`); if(!active||!d.orders) return; setOrders(old=>{ const previous=new Map(old.map(o=>[o.id,o.status])); const changed=d.orders.filter(o=>previous.has(o.id)&&previous.get(o.id)!==o.status); if(changed.length){ setNotifications(ns=>[...changed.map(o=>({id:`${o.id}-${o.status}`,orderId:o.id,status:o.status,createdAt:new Date().toISOString(),message:`Order ${o.id}: ${o.status}`})),...ns].slice(0,30)); notify(`Order update: ${changed[0].status}`); } return d.orders; }); } catch {} }; refresh(); const timer=setInterval(refresh,20000); return ()=>{active=false;clearInterval(timer);}; },[user?.email]);
   useEffect(()=>{ 
@@ -60,7 +62,6 @@ function App(){
     navigator.serviceWorker.ready.then(reg=>reg.pushManager.getSubscription()).then(sub=>setPushEnabled(!!sub)).catch(()=>{});
   },[user?.email]);
 
-  const isAdmin = !!user && !!user.isAdmin;
   const cartItems = Object.entries(cart).map(([id,qty])=>({product:products.find(p=>String(p.id)===String(id)),qty})).filter(x=>x.product && x.qty>0);
   const cartCount = cartItems.reduce((n,x)=>n+x.qty,0);
   const subtotal = cartItems.reduce((n,x)=>n+x.product.price*x.qty,0);

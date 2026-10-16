@@ -9,7 +9,7 @@ const localProducts = [
 export const seedProducts = localProducts;
 export async function api(path, options = {}) {
   try {
-    const res = await fetch(path, { headers: { "Content-Type":"application/json", ...(sessionStorage.getItem("ksr-google-credential") ? { Authorization: `Bearer ${sessionStorage.getItem("ksr-google-credential")}` } : {}), ...(options.headers||{}) }, ...options });
+    const res = await fetch(path, { ...options, headers: { "Content-Type":"application/json", ...(sessionStorage.getItem("ksr-google-credential") ? { Authorization: `Bearer ${sessionStorage.getItem("ksr-google-credential")}` } : {}), ...(options.headers||{}) } });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Request failed");
     return data;

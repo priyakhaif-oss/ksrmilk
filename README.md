@@ -62,3 +62,6 @@ npm run dev
 ```
 
 For push notifications, localhost is generally treated as a secure context; on a deployed site use HTTPS. MongoDB Atlas must permit network access from your hosting environment. This project was packaged for deployment, but a live deployment and push delivery cannot be verified until your own Google, MongoDB, VAPID and hosting settings are configured.
+
+## White-screen fix in this replacement
+The initial render now calculates `isAdmin` before any React effects use it. This avoids a JavaScript temporal-dead-zone error in the effect dependency array that could stop the app from rendering. A React error boundary also shows a recovery message instead of a completely blank page if a different rendering error occurs. After replacing the project, redeploy with a fresh build (clear the hosting build cache if the old blank screen persists).
