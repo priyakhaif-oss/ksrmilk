@@ -76,3 +76,6 @@ The initial render now calculates `isAdmin` before any React effects use it. Thi
 Open `/admin` and sign in with the username/password from the hosting environment. Choose **Website settings** to edit the free-first-order delivery promotion, delivery fee, morning/evening times, logo/favicon image, green theme colors, homepage message and customer-care hours. Uploads are stored in MongoDB GridFS. Save the settings to publish them; the storefront polls for settings while customers browse.
 
 Default delivery slots are morning 6 AM–9 AM and evening 6 PM–8 PM. Available slots are filtered against local device time. First-order free delivery is also checked server-side using the phone number and/or email on prior orders, so the server determines the final order total. Keep regular MongoDB backups.
+
+### Admin website image controls
+In `/admin` → **Website settings** → **Branding and theme**, upload or set URLs for the website logo/browser icon, homepage milk photo, and family breakfast photo. Each image shows a preview and is saved to MongoDB GridFS when uploaded; click **Save website settings** to publish the changes. Text inputs retain focus while typing.

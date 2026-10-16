@@ -3,7 +3,7 @@ import { requireAdmin } from "./_auth.js";
 export const defaultSettings={
   deliveryFee:25, firstOrderFree:true, promoText:"Free delivery on your first order!",
   morningStart:"06:00", morningEnd:"09:00", eveningStart:"18:00", eveningEnd:"20:00",
-  logoImage:"/icons/ksr-512.png", primaryGreen:"#176b3a", secondaryGreen:"#2f8a50", backgroundWhite:"#ffffff",
+  logoImage:"/icons/ksr-512.png", heroImage:"https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=1100&q=90", familyImage:"https://images.unsplash.com/photo-1528750997573-59b89d56f4f5?auto=format&fit=crop&w=1000&q=85", primaryGreen:"#176b3a", secondaryGreen:"#2f8a50", backgroundWhite:"#ffffff",
   morningHeadline:"Good morning — start with good milk.", eveningHeadline:"Good evening — goodness for your table.",
   customerCare:"Sun – Sat · 7 AM – 8 PM"
 };

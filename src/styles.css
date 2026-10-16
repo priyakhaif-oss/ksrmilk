@@ -84,3 +84,6 @@ body{background:var(--cream)}
 .trust-strip small{opacity:.78}
 .trust-icon{background:#ffffff1c;color:#e3efc4}
 .hero{background:linear-gradient(120deg,#edf7ef 0%,#ffffff 70%)}
+.settings-photo-preview{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #e1eae2;border-radius:10px;background:#fff;min-width:0}
+.settings-photo-preview img{display:block;width:100%;max-height:240px;object-fit:cover;border-radius:8px;background:#f7faf7}
+.settings-photo-preview span{font-size:12px;color:#5c6d60}
