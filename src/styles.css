@@ -87,3 +87,12 @@ body{background:var(--cream)}
 .settings-photo-preview{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #e1eae2;border-radius:10px;background:#fff;min-width:0}
 .settings-photo-preview img{display:block;width:100%;max-height:240px;object-fit:cover;border-radius:8px;background:#f7faf7}
 .settings-photo-preview span{font-size:12px;color:#5c6d60}
+
+/* Admin-configurable glassmorphism header */
+.header{background:color-mix(in srgb,var(--header-bg,#176b3a) var(--header-opacity,82%),transparent)!important;color:var(--header-text,#fff);backdrop-filter:blur(var(--header-blur,18px)) saturate(165%);-webkit-backdrop-filter:blur(var(--header-blur,18px)) saturate(165%);border-bottom:1px solid color-mix(in srgb,var(--header-text,#fff) 22%,transparent);box-shadow:0 8px 30px #10251518}
+.header .brand,.header .desktop-nav button,.header .icon-btn{color:var(--header-text,#fff)}
+.header .brand small{color:color-mix(in srgb,var(--header-text,#fff) 82%,transparent)}
+.header .desktop-nav button.active,.header .desktop-nav button:hover{color:var(--header-text,#fff);text-decoration:underline;text-underline-offset:7px}
+.header .cart-button{background:color-mix(in srgb,var(--header-text,#fff) 92%,transparent);color:var(--header-bg,#176b3a);backdrop-filter:blur(8px)}
+.header .cart-button b{background:var(--header-bg,#176b3a);color:var(--header-text,#fff)}
+.settings-panel input[type=range]{width:100%;accent-color:var(--green);min-height:32px}

@@ -3,9 +3,10 @@ import { requireAdmin } from "./_auth.js";
 export const defaultSettings={
   deliveryFee:25, firstOrderFree:true, promoText:"Free delivery on your first order!",
   morningStart:"06:00", morningEnd:"09:00", eveningStart:"18:00", eveningEnd:"20:00",
-  logoImage:"/icons/ksr-512.png", heroImage:"https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=1100&q=90", familyImage:"https://images.unsplash.com/photo-1528750997573-59b89d56f4f5?auto=format&fit=crop&w=1000&q=85", primaryGreen:"#176b3a", secondaryGreen:"#2f8a50", backgroundWhite:"#ffffff",
+  logoImage:"/icons/ksr-512.png", heroImage:"", familyImage:"", primaryGreen:"#176b3a", secondaryGreen:"#2f8a50", backgroundWhite:"#ffffff",
   morningHeadline:"Good morning — start with good milk.", eveningHeadline:"Good evening — goodness for your table.",
-  customerCare:"Sun – Sat · 7 AM – 8 PM"
+  customerCare:"Sun – Sat · 7 AM – 8 PM",
+  headerTitle:"KSR Dairy Foods", headerSubtitle:"FRESHNESS YOU CAN TRUST", headerBackground:"#176b3a", headerTextColor:"#ffffff", headerOpacity:82, headerBlur:18, footerSlogan:"Fresh every day. Made for your family."
 };
 const allowed=Object.keys(defaultSettings);
 export default async function handler(req,res){
@@ -15,8 +16,10 @@ export default async function handler(req,res){
     if(req.method==="GET") { const doc=await col.findOne({_id:"main"}); const settings={...defaultSettings,...(doc?.settings||{})}; return res.status(200).json({settings}); }
     if(req.method==="PUT") { const admin=await requireAdmin(req,res); if(!admin) return; const incoming=req.body?.settings||{}; const clean={}; for(const key of allowed){ if(incoming[key]!==undefined) clean[key]=incoming[key]; }
       for(const k of ["morningStart","morningEnd","eveningStart","eveningEnd"]){if(clean[k]!==undefined&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(clean[k]))) return res.status(400).json({error:`Invalid time for ${k}`});}
-      for(const k of ["primaryGreen","secondaryGreen","backgroundWhite"]){if(clean[k]!==undefined&&!/^#[0-9a-fA-F]{6}$/.test(String(clean[k]))) return res.status(400).json({error:`Invalid color for ${k}`});}
+      for(const k of ["primaryGreen","secondaryGreen","backgroundWhite","headerBackground","headerTextColor"]){if(clean[k]!==undefined&&!/^#[0-9a-fA-F]{6}$/.test(String(clean[k]))) return res.status(400).json({error:`Invalid color for ${k}`});}
       if(clean.deliveryFee!==undefined) clean.deliveryFee=Math.max(0,Number(clean.deliveryFee)||0);
+      if(clean.headerOpacity!==undefined) clean.headerOpacity=Math.max(10,Math.min(100,Number(clean.headerOpacity)||82));
+      if(clean.headerBlur!==undefined) clean.headerBlur=Math.max(0,Math.min(40,Number(clean.headerBlur)||0));
       clean.updatedAt=new Date(); await col.updateOne({_id:"main"},{$set:{settings:clean,updatedAt:new Date(),updatedBy:admin.email}},{upsert:true}); const doc=await col.findOne({_id:"main"}); return res.status(200).json({settings:{...defaultSettings,...doc.settings}});
     }
     res.setHeader("Allow","GET, PUT"); return res.status(405).json({error:"Method not allowed"});

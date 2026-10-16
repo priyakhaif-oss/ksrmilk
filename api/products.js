@@ -1,11 +1,9 @@
-import { getDb, sampleProducts } from "./_db.js";
+import { getDb } from "./_db.js";
 import { requireAdmin } from "./_auth.js";
 export default async function handler(req,res){
   try{
     const db=await getDb(); const col=db.collection("products");
     if(req.method==="GET"){
-      const count=await col.countDocuments();
-      if(!count) await col.insertMany(sampleProducts.map(p=>({...p,createdAt:new Date()})));
       const products=await col.find({}, {_id:0}).sort({name:1}).toArray();
       return res.status(200).json({products});
     }
