@@ -1,0 +1,243 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { api, seedProducts } from "./api";
+import { Milk, ShoppingBag, Search, Menu, X, Plus, Minus, ArrowRight, ChevronRight, Leaf, ShieldCheck, Truck, Clock, Heart, UserRound, MapPin, Package, LogOut, CheckCircle2, Trash2, Pencil, LayoutDashboard, CircleUserRound, Star, Sparkles, ChevronDown, PhoneCall, MessageCircle, Download, Bell } from "lucide-react";
+
+const money = n => `₹${Number(n||0).toFixed(0)}`;
+const getStore = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } };
+const setStore = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+const categories = ["All", "Milk", "Curd", "Paneer", "Ghee", "Butter", "Drinks"];
+const initialProfile = { name:"", email:"", phone:"", address:"", city:"", pincode:"" };
+
+function App(){
+  const [page,setPage] = useState(()=>window.location.pathname.replace(/\/+$/,"")==="/admin"?"admin":"home");
+  const [products,setProducts] = useState(seedProducts);
+  const [cart,setCart] = useState(()=>getStore("ksr-cart",{}));
+  const [orders,setOrders] = useState(()=>getStore("ksr-orders",[]));
+  const [profile,setProfile] = useState(()=>getStore("ksr-profile",initialProfile));
+  const [user,setUser] = useState(()=>getStore("ksr-user",null));
+  const [category,setCategory] = useState("All");
+  const [query,setQuery] = useState("");
+  const [selected,setSelected] = useState(null);
+  const [drawer,setDrawer] = useState(false);
+  const [toast,setToast] = useState("");
+  const [loading,setLoading] = useState(false);
+  const [adminTab,setAdminTab] = useState("products");
+  const [editProduct,setEditProduct] = useState(null);
+  const [uploadingImage,setUploadingImage] = useState(false);
+  const [location,setLocation] = useState(null);
+  const [checkout,setCheckout] = useState({name:"",email:"",phone:"",address:"",city:"",pincode:"",note:"",payment:"Cash on delivery"});
+  const [googleReady,setGoogleReady] = useState(false);
+  const [googleModal,setGoogleModal] = useState(false);
+  const [installPrompt,setInstallPrompt] = useState(null);
+  const [pushEnabled,setPushEnabled] = useState(false);
+  const [notifications,setNotifications] = useState(()=>getStore("ksr-notifications",[]));
+
+  useEffect(()=>{ setStore("ksr-cart",cart); },[cart]);
+  useEffect(()=>{ setStore("ksr-orders",orders); },[orders]);
+  useEffect(()=>{ setStore("ksr-profile",profile); },[profile]);
+  useEffect(()=>{ setStore("ksr-user",user); },[user]);
+  useEffect(()=>{ setStore("ksr-notifications",notifications); },[notifications]);
+  useEffect(()=>{ if(window.location.pathname==="/admin") setPage("admin"); },[]);
+  useEffect(()=>{ if(page==="admin" && user && !isAdmin){ window.history.replaceState({},"","/"); setPage("home"); notify("Admin access required"); } },[page,user]);
+  useEffect(()=>{ if(page!=="admin" || !isAdmin) return; let active=true; api("/api/orders").then(d=>{if(active&&d.orders) setOrders(d.orders);}).catch(e=>notify(e.message||"Could not load server orders")); return ()=>{active=false;}; },[page,isAdmin]);
+  useEffect(()=>{ if(!user?.email) return; let active=true; const refresh=async()=>{ try { const d=await api(`/api/orders?email=${encodeURIComponent(user.email)}`); if(!active||!d.orders) return; setOrders(old=>{ const previous=new Map(old.map(o=>[o.id,o.status])); const changed=d.orders.filter(o=>previous.has(o.id)&&previous.get(o.id)!==o.status); if(changed.length){ setNotifications(ns=>[...changed.map(o=>({id:`${o.id}-${o.status}`,orderId:o.id,status:o.status,createdAt:new Date().toISOString(),message:`Order ${o.id}: ${o.status}`})),...ns].slice(0,30)); notify(`Order update: ${changed[0].status}`); } return d.orders; }); } catch {} }; refresh(); const timer=setInterval(refresh,20000); return ()=>{active=false;clearInterval(timer);}; },[user?.email]);
+  useEffect(()=>{ 
+    api("/api/products").then(d=>{if(d.products?.length) setProducts(d.products);}).catch(()=>{});
+  },[]);
+  useEffect(()=>{ if(user) setCheckout(c=>({...c,name:c.name||user.name||"",email:c.email||user.email||profile.email||"",phone:c.phone||profile.phone||"",address:c.address||profile.address||"",city:c.city||profile.city||"",pincode:c.pincode||profile.pincode||""})); },[user,profile]);
+  useEffect(()=>{ const script=document.createElement("script"); script.src="https://accounts.google.com/gsi/client"; script.async=true; script.onload=()=>setGoogleReady(true); document.head.appendChild(script); return ()=>{ if(script.parentNode) script.parentNode.removeChild(script); }; },[]);
+  useEffect(()=>{ if(!toast) return; const t=setTimeout(()=>setToast(""),2800); return ()=>clearTimeout(t); },[toast]);
+  useEffect(()=>{
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    const onInstall=e=>{e.preventDefault();setInstallPrompt(e);};
+    const onInstalled=()=>{setInstallPrompt(null);notify('KSR Dairy Foods added to your home screen');};
+    window.addEventListener('beforeinstallprompt',onInstall);
+    window.addEventListener('appinstalled',onInstalled);
+    return ()=>{window.removeEventListener('beforeinstallprompt',onInstall);window.removeEventListener('appinstalled',onInstalled);};
+  },[]);
+  useEffect(()=>{
+    if(!user?.email || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(reg=>reg.pushManager.getSubscription()).then(sub=>setPushEnabled(!!sub)).catch(()=>{});
+  },[user?.email]);
+
+  const isAdmin = !!user && !!user.isAdmin;
+  const cartItems = Object.entries(cart).map(([id,qty])=>({product:products.find(p=>String(p.id)===String(id)),qty})).filter(x=>x.product && x.qty>0);
+  const cartCount = cartItems.reduce((n,x)=>n+x.qty,0);
+  const subtotal = cartItems.reduce((n,x)=>n+x.product.price*x.qty,0);
+  const delivery = subtotal===0 || subtotal>=299 ? 0 : 25;
+  const total = subtotal+delivery;
+  const filtered = useMemo(()=>products.filter(p=>(category==="All"||p.category===category) && `${p.name} ${p.category} ${p.description||""}`.toLowerCase().includes(query.toLowerCase())),[products,category,query]);
+
+  function notify(s){setToast(s);}
+  function go(p){setPage(p);setDrawer(false);setSelected(null);const target=p==="admin"?"/admin":"/";if(window.location.pathname!==target) window.history.pushState({},"",target);window.scrollTo({top:0,behavior:"smooth"});}
+  function add(p,qty=1){setCart(c=>({...c,[p.id]:(c[p.id]||0)+qty}));notify(`${p.name} added to cart`);}
+  function setQty(id,qty){setCart(c=>{const n={...c}; if(qty<=0) delete n[id]; else n[id]=qty; return n;});}
+  function openProduct(p){setSelected(p);setPage("product");window.scrollTo(0,0);}
+  async function signIn(){
+    const clientId=import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if(!clientId){notify("Google sign-in setup needed — see README.md");return;}
+    setGoogleModal(true);
+  }
+  useEffect(()=>{
+    if(!googleModal || !googleReady || !window.google) return;
+    const clientId=import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if(!clientId) return;
+    const target=document.getElementById("ksr-google-signin-button");
+    if(!target) return;
+    target.replaceChildren();
+    window.google.accounts.id.initialize({
+      client_id:clientId,
+      ux_mode:"popup",
+      auto_select:false,
+      context:"signin",
+      callback:async response=>{
+        try {
+          const data=await api("/api/auth/google",{method:"POST",body:JSON.stringify({credential:response.credential})});
+          sessionStorage.setItem("ksr-google-credential",response.credential);
+          setUser(data.user); setProfile(p=>({...p,name:p.name||data.user.name,email:data.user.email}));
+          try { const saved=await api("/api/profile"); if(saved.profile) setProfile(p=>({...p,...saved.profile,email:data.user.email})); } catch {}
+          setGoogleModal(false);
+          notify("Signed in successfully");
+          if(window.location.pathname==="/admin" && data.user.isAdmin) go("admin");
+          else go("home");
+        } catch(e){notify(e.message||"Sign-in failed");}
+      }
+    });
+    window.google.accounts.id.renderButton(target,{type:"standard",theme:"outline",size:"large",text:"continue_with",shape:"rectangular",logo_alignment:"left",width:280});
+  },[googleModal,googleReady]);
+  async function installApp(){
+    if(installPrompt){
+      try{await installPrompt.prompt();const choice=await installPrompt.userChoice;setInstallPrompt(null);if(choice?.outcome==='accepted') notify('Installing KSR Dairy Foods…');else notify('You can install it any time from this button.');}catch{notify('Open browser menu and choose Install app / Add to Home screen.');}
+      return;
+    }
+    const standalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(standalone){notify('KSR Dairy Foods is already installed');return;}
+    notify('Tap browser menu ⋮, then choose “Add to Home screen” or “Install app”.');
+  }
+  function base64ToBytes(value){const padding='='.repeat((4-value.length%4)%4);const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');const raw=window.atob(base64);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));}
+  async function enablePush(){
+    if(!user?.email){notify('Sign in first to enable order notifications');return;}
+    if(!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)){notify('This browser does not support website push notifications. Try Chrome on Android.');return;}
+    if(!window.isSecureContext){notify('Push notifications need the live HTTPS website.');return;}
+    try{
+      const permission=await Notification.requestPermission();
+      if(permission!=='granted'){notify('Allow notifications in browser settings to receive order updates.');return;}
+      const config=await api('/api/push');
+      if(!config.publicKey){notify('Push notifications need VAPID keys in hosting settings. See README.');return;}
+      const reg=await navigator.serviceWorker.ready;
+      let sub=await reg.pushManager.getSubscription();
+      if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64ToBytes(config.publicKey)});
+      await api('/api/push',{method:'POST',body:JSON.stringify({subscription:sub.toJSON()})});
+      setPushEnabled(true);notify('Website notifications enabled');
+    }catch(e){notify(e.message||'Could not enable website notifications');}
+  }
+
+  async function locate(){
+    if(!navigator.geolocation){notify("Location is not supported on this device");return;}
+    navigator.geolocation.getCurrentPosition(pos=>{setLocation({lat:pos.coords.latitude,lng:pos.coords.longitude});notify("Delivery location captured");},()=>notify("Location permission was not granted"),{enableHighAccuracy:true,timeout:10000});
+  }
+  async function placeOrder(e){
+    e.preventDefault();
+    if(!cartItems.length){notify("Your cart is empty");return;}
+    setLoading(true);
+    const order={id:`KSR${Date.now().toString().slice(-8)}`,items:cartItems.map(x=>({productId:x.product.id,name:x.product.name,price:x.product.price,unit:x.product.unit,qty:x.qty})),subtotal,delivery,total,status:"Order received",payment:checkout.payment,customer:{name:checkout.name,email:user?.email||checkout.email||profile.email||"",phone:checkout.phone,address:checkout.address,city:checkout.city,pincode:checkout.pincode,note:checkout.note},location,createdAt:new Date().toISOString(),email:user?.email||checkout.email||profile.email||""};
+    try{
+      const result=await api("/api/orders",{method:"POST",body:JSON.stringify(order)});
+      const saved=result.order||order;
+      setOrders(o=>[saved,...o]);setCart({});const updatedProfile={...profile,name:checkout.name,phone:checkout.phone,address:checkout.address,city:checkout.city,pincode:checkout.pincode,email:user?.email||checkout.email||profile.email};setProfile(updatedProfile);if(user?.email) api("/api/profile",{method:"PUT",body:JSON.stringify(updatedProfile)}).catch(()=>{});
+      go("success");notify("Order placed successfully");
+    }catch(err){
+      // Demo mode is explicit: preserve the order locally so the complete UI can be previewed.
+      setOrders(o=>[order,...o]);setCart({});go("success");notify("Order saved in this browser demo. Configure MongoDB for live orders.");
+    }finally{setLoading(false);}
+  }
+  async function uploadProductImage(file, form){
+    if(!file) return;
+    if(!file.type.startsWith("image/")){notify("Please choose an image file");return;}
+    setUploadingImage(true);
+    try{
+      // Resize/compress on the device to keep uploads fast and below serverless request limits.
+      const bitmap=await createImageBitmap(file);
+      const scale=Math.min(1,1400/Math.max(bitmap.width,bitmap.height));
+      const canvas=document.createElement("canvas"); canvas.width=Math.max(1,Math.round(bitmap.width*scale)); canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+      const ctx=canvas.getContext("2d"); ctx.drawImage(bitmap,0,0,canvas.width,canvas.height); bitmap.close?.();
+      let data=canvas.toDataURL("image/jpeg",0.82);
+      if(data.length>4_000_000) data=canvas.toDataURL("image/jpeg",0.65);
+      const result=await api("/api/product-image",{method:"POST",body:JSON.stringify({filename:file.name||"product.jpg",data})});
+      const input=form?.elements?.namedItem("image"); if(input) input.value=result.image;
+      setEditProduct(p=>({...p,image:result.image}));
+      notify("Image uploaded to MongoDB. Save the product to keep its image linked.");
+    }catch(e){notify(e.message||"Image upload failed. Check admin login and MongoDB.");}
+    finally{setUploadingImage(false);}
+  }
+  async function saveProduct(e){
+    e.preventDefault(); const form=new FormData(e.currentTarget);
+    const p={id:editProduct?.id||`p-${Date.now()}`,name:form.get("name"),category:form.get("category"),price:Number(form.get("price")),unit:form.get("unit"),description:form.get("description"),image:form.get("image"),stock:Number(form.get("stock")||0),tag:form.get("tag")||"Fresh today"};
+    if(uploadingImage){notify("Please wait for the image upload to finish");return;}
+    try{
+      const data=await api("/api/products",{method:editProduct?.id?"PUT":"POST",body:JSON.stringify(p)});
+      const saved=data.product||p;setProducts(ps=>editProduct?.id?ps.map(x=>String(x.id)===String(saved.id)?saved:x):[saved,...ps]);setEditProduct(null);notify("Product and image saved in MongoDB");
+    }catch(e){notify(e.message||"Could not save product. Check admin login and MongoDB connection.");}
+  }
+  async function deleteProduct(p){
+    if(!confirm(`Delete ${p.name}?`)) return;
+    try{await api(`/api/products?id=${encodeURIComponent(p.id)}`,{method:"DELETE"});}catch{}
+    setProducts(ps=>ps.filter(x=>String(x.id)!==String(p.id)));notify("Product removed");
+  }
+  async function updateOrderStatus(order,status){
+    try{const result=await api("/api/orders",{method:"PATCH",body:JSON.stringify({id:order.id,status})});
+      setOrders(os=>os.map(o=>o.id===order.id?{...o,status}:o));
+      notify(`Order status changed to ${status}. Website push notification sent when the customer has enabled it.`);
+    }catch(e){notify(e.message||"Could not update order. Check admin login and MongoDB.");}
+  }
+
+  const Header=()=> <header className="header"><div className="header-inner">
+    <button className="icon-btn mobile-menu" onClick={()=>setDrawer(true)} aria-label="Open menu"><Menu/></button>
+    <button className="brand" onClick={()=>go("home")}><span className="brand-mark"><Milk size={24}/></span><span><b>KSR <em>DAIRY</em></b><small>FRESHNESS YOU CAN TRUST</small></span></button>
+    <nav className="desktop-nav"><button className={page==="home"?"active":""} onClick={()=>go("home")}>Home</button><button className={page==="shop"?"active":""} onClick={()=>go("shop")}>Our products</button><button onClick={()=>document.getElementById("why-us")?.scrollIntoView({behavior:"smooth"})}>Our promise</button><button onClick={()=>go("orders")}>Track order</button></nav>
+    <div className="header-actions"><button className="icon-btn profile-shortcut" onClick={()=>go("profile")} aria-label="Profile"><UserRound/></button><button className="cart-button" onClick={()=>go("cart")}><ShoppingBag size={19}/><span>Cart</span><b>{cartCount}</b></button></div>
+  </div></header>;
+
+  const Footer=()=> <footer className="footer"><div className="footer-grid"><div className="footer-brand"><button className="brand light" onClick={()=>go("home")}><span className="brand-mark"><Milk size={24}/></span><span><b>KSR <em>DAIRY</em></b><small>FRESHNESS YOU CAN TRUST</small></span></button><p>Everyday dairy essentials, carefully selected for your family's table.</p></div><div><h4>Explore</h4><button onClick={()=>go("shop")}>Shop all products</button><button onClick={()=>go("orders")}>Track your order</button><button onClick={()=>go("profile")}>My account</button></div><div><h4>Customer care</h4><p>Mon – Sat · 7 AM – 8 PM</p><p>Freshness, delivered with care.</p><p className="muted">Update contact details before launch.</p></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} KSR Dairy Foods</span><span>Fresh every day. Made for your family.</span></div></footer>;
+
+  function ProductCard({p}){
+    return <article className="product-card"><button className="product-image" onClick={()=>openProduct(p)}><img src={p.image} alt={p.name} loading="lazy"/><span className="product-tag">{p.tag||"Fresh pick"}</span><span className="quick-view">Quick view <ArrowRight size={14}/></span></button><div className="product-info"><div className="product-category">{p.category} · {p.unit}</div><button className="product-name" onClick={()=>openProduct(p)}>{p.name}</button><p>{p.description}</p><div className="product-buy"><strong>{money(p.price)}</strong><button className="add-btn" onClick={()=>add(p)}><Plus size={16}/> Add</button></div></div></article>;
+  }
+  function ProductGrid({items}){return items.length?<div className="product-grid">{items.map(p=><ProductCard key={p.id} p={p}/>)}</div>:<div className="empty-state"><ShoppingBag size={34}/><h3>No products found</h3><p>Try a different category or search.</p><button className="btn secondary" onClick={()=>{setQuery("");setCategory("All");}}>Clear filters</button></div>}
+
+  const Home=()=> <><section className="hero"><div className="hero-copy"><div className="eyebrow"><span className="eyebrow-dot"></span> A little goodness, every day</div><h1>Good mornings<br/>start with <span>good milk.</span></h1><p>Fresh dairy favourites for your family's everyday moments. Simple, wholesome and delivered with care.</p><div className="hero-buttons"><button className="btn primary" onClick={()=>go("shop")}>Shop fresh products <ArrowRight size={18}/></button><button className="text-link" onClick={()=>document.getElementById("why-us")?.scrollIntoView({behavior:"smooth"})}>Our promise <ChevronRight size={16}/></button></div><div className="hero-proof"><div className="proof-avatars"><span>🥛</span><span>🥣</span><span>🧈</span></div><div><div className="stars">★★★★★ <b>Everyday goodness</b></div><small>Made for the moments that matter</small></div></div></div><div className="hero-visual"><div className="hero-orbit orbit-one"></div><div className="hero-orbit orbit-two"></div><img className="hero-img" src="https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=1100&q=90" alt="Fresh milk in a glass"/><div className="floating-note"><span className="note-icon"><Leaf size={19}/></span><span><b>Fresh, every day</b><small>A wholesome choice</small></span></div><div className="floating-stamp"><span>GOOD</span><b>NESS</b><small>IN EVERY DROP</small></div></div></section>
+  <section className="trust-strip"><div><span className="trust-icon"><ShieldCheck/></span><span><b>Quality first</b><small>Carefully selected</small></span></div><div><span className="trust-icon"><Truck/></span><span><b>At your doorstep</b><small>Easy home delivery</small></span></div><div><span className="trust-icon"><Clock/></span><span><b>Made for daily life</b><small>Everyday essentials</small></span></div><div><span className="trust-icon"><Heart/></span><span><b>Family favourites</b><small>Goodness you can share</small></span></div></section>
+  <section className="section featured"><div className="section-heading"><div><div className="eyebrow">YOUR DAILY FAVOURITES</div><h2>Fresh picks, <span>just for you.</span></h2><p>The little essentials that make every meal feel like home.</p></div><button className="text-link desktop-only" onClick={()=>go("shop")}>View all products <ArrowRight size={16}/></button></div><ProductGrid items={products.slice(0,4)}/><button className="btn secondary mobile-wide" onClick={()=>go("shop")}>Explore all products <ArrowRight size={17}/></button></section>
+  <section className="promise-section" id="why-us"><div className="promise-photo"><img src="https://images.unsplash.com/photo-1528750997573-59b89d56f4f5?auto=format&fit=crop&w=1000&q=85" alt="Family breakfast table"/></div><div className="promise-copy"><div className="eyebrow">THE KSR PROMISE</div><h2>Little things that make a <span>big difference.</span></h2><p>We believe good food brings people together. That's why our range focuses on everyday dairy favourites that fit right into your family's routine.</p><div className="promise-list"><div><span><CheckCircle2/></span><div><b>Quality you can feel good about</b><small>Thoughtful choices for everyday meals.</small></div></div><div><span><CheckCircle2/></span><div><b>Convenience without the fuss</b><small>Shop your favourites in just a few taps.</small></div></div><div><span><CheckCircle2/></span><div><b>Made for your everyday</b><small>From morning chai to family dinners.</small></div></div></div><button className="btn primary" onClick={()=>go("shop")}>Find your favourites <ArrowRight size={18}/></button></div></section>
+  <section className="bottom-cta"><div className="cta-icon"><Sparkles/></div><div><h2>A little fresh goodness goes a long way.</h2><p>Fill your basket with everyday favourites.</p></div><button className="btn light-btn" onClick={()=>go("shop")}>Shop now <ArrowRight size={17}/></button></section></>;
+
+  const Shop=()=> <section className="section shop-page"><div className="breadcrumb"><button onClick={()=>go("home")}>Home</button><ChevronRight size={14}/><span>Our products</span></div><div className="shop-heading"><div><div className="eyebrow">THE KSR COLLECTION</div><h1>Goodness for <span>every day.</span></h1><p>Discover your daily dairy essentials, all in one place.</p></div><div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search products..."/>{query&&<button onClick={()=>setQuery("")}><X size={15}/></button>}</div></div><div className="shop-controls"><div className="category-pills">{categories.map(c=><button key={c} className={category===c?"selected":""} onClick={()=>setCategory(c)}>{c}</button>)}</div><span className="result-count">{filtered.length} products</span></div><ProductGrid items={filtered}/></section>;
+
+  const ProductPage=()=> !selected?<Shop/>:<section className="section product-detail"><div className="breadcrumb"><button onClick={()=>go("home")}>Home</button><ChevronRight size={14}/><button onClick={()=>go("shop")}>Products</button><ChevronRight size={14}/><span>{selected.name}</span></div><div className="detail-layout"><div className="detail-image"><img src={selected.image} alt={selected.name}/><span className="product-tag">{selected.tag||"Fresh pick"}</span></div><div className="detail-copy"><div className="eyebrow">{selected.category} · {selected.unit}</div><h1>{selected.name}</h1><div className="detail-rating"><span>★★★★★</span> <small>Everyday favourite</small></div><strong className="detail-price">{money(selected.price)} <small>/ {selected.unit}</small></strong><p>{selected.description}</p><div className="detail-benefits"><div><CheckCircle2/> Carefully selected</div><div><Truck/> Convenient delivery</div></div><div className="detail-actions"><button className="btn primary" onClick={()=>add(selected)}><ShoppingBag size={18}/> Add to cart · {money(selected.price)}</button><button className="btn secondary" onClick={()=>{add(selected);go("cart")}}>Buy now <ArrowRight size={17}/></button></div><div className="delivery-note"><Truck size={19}/><span><b>Delivery made easy</b><small>Free delivery on orders over ₹299.</small></span></div></div></div></section>;
+
+  const Cart=()=> <section className="section content-page"><div className="breadcrumb"><button onClick={()=>go("home")}>Home</button><ChevronRight size={14}/><span>Your cart</span></div><div className="page-title"><div className="eyebrow">YOUR BASKET</div><h1>Your fresh picks.</h1><p>Review your basket before checking out.</p></div>{!cartItems.length?<div className="empty-state large"><div className="empty-icon"><ShoppingBag/></div><h2>Your cart is taking a little break.</h2><p>Add your everyday favourites and they’ll show up here.</p><button className="btn primary" onClick={()=>go("shop")}>Explore products <ArrowRight size={17}/></button></div>:<div className="cart-layout"><div className="cart-list">{cartItems.map(({product:p,qty})=><div className="cart-row" key={p.id}><button className="cart-thumb" onClick={()=>openProduct(p)}><img src={p.image} alt={p.name}/></button><div className="cart-item-copy"><button className="product-name" onClick={()=>openProduct(p)}>{p.name}</button><small>{p.unit}</small><strong>{money(p.price)}</strong><button className="remove-link" onClick={()=>setQty(p.id,0)}><Trash2 size={13}/> Remove</button></div><div className="qty-control"><button onClick={()=>setQty(p.id,qty-1)} aria-label="Decrease"><Minus size={14}/></button><span>{qty}</span><button onClick={()=>setQty(p.id,qty+1)} aria-label="Increase"><Plus size={14}/></button></div><strong className="line-total">{money(p.price*qty)}</strong></div>)}<button className="text-link continue-link" onClick={()=>go("shop")}>← Continue shopping</button></div><aside className="summary-card"><h3>Order summary</h3><div><span>Subtotal ({cartCount} items)</span><b>{money(subtotal)}</b></div><div><span>Delivery</span><b>{delivery?money(delivery):"FREE"}</b></div>{subtotal>0&&subtotal<299&&<p className="shipping-hint">Add {money(299-subtotal)} more for free delivery.</p>}<div className="summary-total"><span>Total</span><strong>{money(total)}</strong></div><button className="btn primary full" onClick={()=>go("checkout")}>Continue to checkout <ArrowRight size={17}/></button><p className="secure-note"><ShieldCheck size={14}/> Your details are handled with care.</p></aside></div>}</section>;
+
+  const Checkout=()=> <section className="section content-page"><div className="breadcrumb"><button onClick={()=>go("home")}>Home</button><ChevronRight size={14}/><button onClick={()=>go("cart")}>Cart</button><ChevronRight size={14}/><span>Checkout</span></div><div className="page-title"><div className="eyebrow">ALMOST THERE</div><h1>Where should we deliver?</h1><p>Enter your delivery details to place your order.</p></div>{!cartItems.length?<div className="empty-state"><h2>Your cart is empty</h2><button className="btn primary" onClick={()=>go("shop")}>Shop products</button></div>:<form className="checkout-layout" onSubmit={placeOrder}><div className="checkout-form panel"><h3><MapPin size={19}/> Delivery details</h3><div className="form-grid"><label>Full name<input required value={checkout.name} onChange={e=>setCheckout({...checkout,name:e.target.value})} placeholder="Your name"/></label><label>Email for order updates<input type="email" value={checkout.email} onChange={e=>setCheckout({...checkout,email:e.target.value})} placeholder="you@example.com"/></label><label>Mobile number<input required pattern="[0-9+() -]{8,16}" value={checkout.phone} onChange={e=>setCheckout({...checkout,phone:e.target.value})} placeholder="10-digit mobile number"/></label><label className="span-two">Delivery address<input required value={checkout.address} onChange={e=>setCheckout({...checkout,address:e.target.value})} placeholder="House / street / landmark"/></label><label>City / town<input required value={checkout.city} onChange={e=>setCheckout({...checkout,city:e.target.value})} placeholder="Your city"/></label><label>PIN code<input required pattern="[0-9]{6}" value={checkout.pincode} onChange={e=>setCheckout({...checkout,pincode:e.target.value})} placeholder="6-digit PIN"/></label><label className="span-two">Delivery note (optional)<textarea value={checkout.note} onChange={e=>setCheckout({...checkout,note:e.target.value})} placeholder="Any directions for delivery?"/></label></div><button type="button" className="location-btn" onClick={locate}><MapPin size={16}/>{location?"Location captured ✓":"Use my current location"}</button>{location&&<small className="location-coords">GPS: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}</small>}<h3 className="payment-heading"><ShoppingBag size={19}/> Payment method</h3><div className="payment-options"><label className={checkout.payment==="Cash on delivery"?"payment-option chosen":"payment-option"}><input type="radio" checked={checkout.payment==="Cash on delivery"} onChange={()=>setCheckout({...checkout,payment:"Cash on delivery"})}/><span><b>Cash on delivery</b><small>Pay when your order arrives</small></span></label><label className={checkout.payment==="UPI on delivery"?"payment-option chosen":"payment-option"}><input type="radio" checked={checkout.payment==="UPI on delivery"} onChange={()=>setCheckout({...checkout,payment:"UPI on delivery"})}/><span><b>UPI on delivery</b><small>Pay via UPI when delivered</small></span></label></div><p className="payment-disclaimer">Online payment gateway is not connected in this starter. No online payment is collected.</p></div><aside className="summary-card"><h3>Your order</h3>{cartItems.map(({product:p,qty})=><div className="summary-product" key={p.id}><img src={p.image} alt=""/><span>{p.name}<small>Qty: {qty}</small></span><b>{money(p.price*qty)}</b></div>)}<div className="summary-divider"></div><div><span>Subtotal</span><b>{money(subtotal)}</b></div><div><span>Delivery</span><b>{delivery?money(delivery):"FREE"}</b></div><div className="summary-total"><span>Total</span><strong>{money(total)}</strong></div><button className="btn primary full" type="submit" disabled={loading}>{loading?"Placing order…":<>Place order · {money(total)} <ArrowRight size={17}/></>}</button><p className="secure-note"><ShieldCheck size={14}/> By placing your order, you confirm these details are correct.</p></aside></form>}</section>;
+
+  const Success=()=> <section className="section content-page"><div className="success-card"><div className="success-icon"><CheckCircle2/></div><div className="eyebrow">ORDER CONFIRMED</div><h1>Thank you for your order!</h1><p>Your fresh picks are in the basket of good things. Keep your order number handy.</p><div className="success-order"><span>Order number</span><b>{orders[0]?.id||"KSR"}</b><span>Order total</span><b>{money(orders[0]?.total||0)}</b></div><div className="status-pill"><span></span>{orders[0]?.status||"Order received"}</div><div className="success-actions"><button className="btn primary" onClick={()=>go("orders")}>View my orders <ArrowRight size={17}/></button><button className="btn secondary" onClick={()=>go("shop")}>Continue shopping</button></div><small className="demo-note">If MongoDB is not configured, this order is saved only in this browser.</small></div></section>;
+
+  const Orders=()=> <section className="section content-page"><div className="breadcrumb"><button onClick={()=>go("home")}>Home</button><ChevronRight size={14}/><span>My orders</span></div><div className="page-title"><div className="eyebrow">YOUR KSR JOURNEY</div><h1>Orders, all in one place.</h1><p>See your recent orders and their latest status.</p></div>{!orders.length?<div className="empty-state large"><div className="empty-icon"><Package/></div><h2>No orders just yet.</h2><p>Your next favourite is only a few taps away.</p><button className="btn primary" onClick={()=>go("shop")}>Shop fresh products <ArrowRight size={17}/></button></div>:<div className="orders-list">{orders.map(o=><article className="order-card" key={o.id}><div className="order-top"><div><small>ORDER NUMBER</small><b>{o.id}</b></div><span className="status-pill"><span></span>{o.status}</span></div><div className="order-items">{o.items?.map((it,i)=><div key={i}><span>{it.name} × {it.qty}</span><b>{money(it.price*it.qty)}</b></div>)}</div><div className="order-bottom"><span>{new Date(o.createdAt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</span><strong>{money(o.total)}</strong></div></article>)}</div>}</section>;
+
+  const Profile=()=> <section className="section content-page"><div className="breadcrumb"><button onClick={()=>go("home")}>Home</button><ChevronRight size={14}/><span>My profile</span></div><div className="page-title"><div className="eyebrow">YOUR ACCOUNT</div><h1>Hello{user?.name?`, ${user.name.split(" ")[0]}`:" there"}.</h1><p>Your details and your dairy favourites, all together.</p></div><div className="profile-layout"><aside className="profile-side"><div className="profile-avatar">{user?.name?.[0]?.toUpperCase()||<CircleUserRound/>}</div><h3>{user?.name||"Welcome to KSR"}</h3><p>{user?.email||"Sign in to connect your account"}</p>{user?<button className="btn secondary full" onClick={()=>{setUser(null);sessionStorage.removeItem("ksr-google-credential");notify("Signed out");}}><LogOut size={16}/> Sign out</button>:<button className="btn primary full" onClick={signIn}>Continue with Google</button>}</aside><div className="profile-form panel"><div className="panel-title"><h3>Personal details</h3><span>Saved on this device</span></div><form onSubmit={async e=>{e.preventDefault();try{await api("/api/profile",{method:"PUT",body:JSON.stringify(profile)});notify("Profile saved to your account");}catch{notify("Profile saved on this device. Sign in and configure MongoDB for cloud sync.");}setProfile({...profile});}}><div className="form-grid"><label>Full name<input value={profile.name} onChange={e=>setProfile({...profile,name:e.target.value})} placeholder="Your name"/></label><label>Email address<input type="email" value={user?.email||profile.email||""} onChange={e=>setProfile({...profile,email:e.target.value})} placeholder="you@example.com" disabled={!!user}/></label><label>Mobile number<input value={profile.phone} onChange={e=>setProfile({...profile,phone:e.target.value})} placeholder="Your mobile number"/></label><label>City / town<input value={profile.city} onChange={e=>setProfile({...profile,city:e.target.value})} placeholder="Your city"/></label><label className="span-two">Default delivery address<input value={profile.address} onChange={e=>setProfile({...profile,address:e.target.value})} placeholder="House / street / landmark"/></label><label>PIN code<input value={profile.pincode} onChange={e=>setProfile({...profile,pincode:e.target.value})} placeholder="6-digit PIN"/></label></div><button className="btn primary" type="submit">Save details <CheckCircle2 size={16}/></button></form><button className="btn secondary push-enable-button" type="button" onClick={enablePush}><Bell size={16}/>{pushEnabled?"Website notifications enabled":"Enable website notifications"}</button><div className="notifications-panel"><div className="panel-title"><h3>Order notifications</h3><span>{notifications.length} updates</span></div>{notifications.length?notifications.slice(0,5).map(n=><div className="notification-row" key={n.id}><span className="notification-dot"><CheckCircle2 size={16}/></span><div><b>{n.message}</b><small>{new Date(n.createdAt).toLocaleString("en-IN")}</small></div></div>):<p className="notification-empty">Enable website notifications using the bell button to receive order updates even when the website is closed. Sign in first.</p>}</div><div className="profile-order-link"><div><Package/><span><b>Your orders</b><small>{orders.length} order{orders.length===1?"":"s"} placed</small></span></div><button className="text-link" onClick={()=>go("orders")}>View orders <ArrowRight size={16}/></button></div></div></div></section>;
+
+  const Admin=()=> !isAdmin?<section className="section content-page"><div className="empty-state large"><ShieldCheck size={40}/><h2>Admin sign-in required</h2><p>This private page is only for authorized store administrators.</p><button className="btn primary" onClick={signIn}>Continue with Google</button><button className="btn secondary" onClick={()=>go("home")}>Back to store</button></div></section>:<section className="section content-page"><div className="breadcrumb"><button onClick={()=>go("home")}>Home</button><ChevronRight size={14}/><span>Admin</span></div><div className="page-title"><div className="eyebrow">STORE MANAGEMENT</div><h1>Good to see you, admin.</h1><p>Manage your product catalogue and customer orders.</p></div><div className="admin-stats"><div><span>Products</span><b>{products.length}</b><Milk/></div><div><span>Total orders</span><b>{orders.length}</b><Package/></div><div><span>Order value</span><b>{money(orders.reduce((n,o)=>n+Number(o.total||0),0))}</b><ShoppingBag/></div></div><div className="admin-tabs"><button className={adminTab==="products"?"selected":""} onClick={()=>setAdminTab("products")}>Products</button><button className={adminTab==="orders"?"selected":""} onClick={()=>setAdminTab("orders")}>Orders</button></div>{adminTab==="products"?<><div className="admin-toolbar"><h3>Product catalogue</h3><button className="btn primary" onClick={()=>setEditProduct({name:"",category:"Milk",price:0,unit:"500 ml",description:"",image:"",stock:0,tag:"Fresh today"})}><Plus size={17}/> Add product</button></div><div className="admin-table"><div className="admin-table-head"><span>Product</span><span>Category</span><span>Price</span><span>Stock</span><span>Actions</span></div>{products.map(p=><div className="admin-table-row" key={p.id}><span className="admin-product"><img src={p.image} alt=""/><b>{p.name}</b></span><span>{p.category}</span><span>{money(p.price)}</span><span>{p.stock??"—"}</span><span className="row-actions"><button onClick={()=>setEditProduct(p)} aria-label="Edit"><Pencil size={16}/></button><button onClick={()=>deleteProduct(p)} aria-label="Delete"><Trash2 size={16}/></button></span></div>)}</div>{editProduct&&<div className="modal-backdrop" onClick={()=>setEditProduct(null)}><form className="product-modal" onClick={e=>e.stopPropagation()} onSubmit={saveProduct}><div className="modal-heading"><h3>{products.some(p=>String(p.id)===String(editProduct.id))?"Edit product":"Add product"}</h3><button type="button" className="icon-btn" onClick={()=>setEditProduct(null)}><X/></button></div><div className="form-grid"><label>Product name<input required name="name" defaultValue={editProduct.name}/></label><label>Category<select name="category" defaultValue={editProduct.category}>{categories.filter(c=>c!=="All").map(c=><option key={c}>{c}</option>)}</select></label><label>Price (₹)<input required type="number" min="0" name="price" defaultValue={editProduct.price}/></label><label>Pack size<input required name="unit" defaultValue={editProduct.unit}/></label><label>Stock quantity<input type="number" min="0" name="stock" defaultValue={editProduct.stock||0}/></label><label>Tag<input name="tag" defaultValue={editProduct.tag||""}/></label><label className="span-two">Upload product photo to MongoDB<input type="file" accept="image/*" onChange={e=>uploadProductImage(e.target.files?.[0],e.currentTarget.form)} disabled={uploadingImage}/><small>Choose a real photo from your phone. It is compressed and stored in MongoDB GridFS, not just your browser.</small></label><label className="span-two">Image URL / MongoDB image path<input required type="text" name="image" defaultValue={editProduct.image} placeholder="Upload a photo above, or paste an image URL"/><small>Uploaded MongoDB image paths look like /api/product-image?id=...</small></label>{editProduct.image&&<div className="span-two product-image-preview"><img src={editProduct.image} alt="Product preview"/><span>{uploadingImage?"Uploading image…":"Image preview"}</span></div>}<label className="span-two">Description<textarea name="description" defaultValue={editProduct.description}/></label></div><button className="btn primary full" type="submit" disabled={uploadingImage}>{uploadingImage?"Uploading image…":"Save product"} <CheckCircle2 size={16}/></button></form></div>}</>:<div className="admin-orders">{!orders.length?<div className="empty-state"><p>No orders yet.</p></div>:orders.map(o=><article className="admin-order" key={o.id}><div><b>{o.id}</b><small>{o.customer?.name||"Customer"} · {o.customer?.phone||"No phone"}</small><small>{o.customer?.address}, {o.customer?.city} {o.customer?.pincode}</small></div><div><b>{money(o.total)}</b><small>{o.items?.length||0} item types</small></div><div className="admin-order-actions"><div className="admin-decision"><button className="btn primary" disabled={!["Order received"].includes(o.status)} onClick={()=>updateOrderStatus(o,"Confirmed")}>Accept</button><button className="btn reject-btn" disabled={!["Order received"].includes(o.status)} onClick={()=>updateOrderStatus(o,"Cancelled")}>Reject</button></div><select aria-label="Update order progress" value={o.status} onChange={e=>updateOrderStatus(o,e.target.value)}>{["Order received","Confirmed","Preparing","Out for delivery","Delivered","Cancelled"].map(s=><option key={s}>{s}</option>)}</select></div></article>)}</div>}</section>;
+
+  return <><Header/>{drawer&&<div className="drawer-backdrop" onClick={()=>setDrawer(false)}><aside className="mobile-drawer" onClick={e=>e.stopPropagation()}><div className="drawer-head"><span className="brand-mark"><Milk/></span><b>KSR DAIRY</b><button className="icon-btn" onClick={()=>setDrawer(false)}><X/></button></div>{[["home","Home"],["shop","Our products"],["orders","Track order"],["profile","My account"],].map(([p,l])=><button key={p} onClick={()=>go(p)}>{l}<ChevronRight size={17}/></button>)}</aside></div>}
+  <main>{page==="home"?<Home/>:page==="shop"?<Shop/>:page==="product"?<ProductPage/>:page==="cart"?<Cart/>:page==="checkout"?<Checkout/>:page==="success"?<Success/>:page==="orders"?<Orders/>:page==="profile"?<Profile/>:page==="admin"?<Admin/>:<Home/>}</main><Footer/>
+  {googleModal&&<div className="google-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="google-modal-title" onClick={()=>setGoogleModal(false)}><section className="google-modal" onClick={e=>e.stopPropagation()}><button className="icon-btn google-modal-close" onClick={()=>setGoogleModal(false)} aria-label="Close sign-in"><X/></button><span className="brand-mark google-brand-mark"><Milk/></span><h2 id="google-modal-title">Sign in to KSR Dairy Foods</h2><p>Choose a Google account to continue. After sign-in, you’ll return to the website.</p>{!googleReady?<div className="google-loading">Loading Google sign-in…</div>:<div id="ksr-google-signin-button" className="google-signin-button"/>}<small>Your Google password is never shared with KSR Dairy Foods.</small></section></div>}
+  <nav className="mobile-bottom-nav"><button className={["home"].includes(page)?"active":""} onClick={()=>go("home")}><Milk/><span>Home</span></button><button className={["shop","product"].includes(page)?"active":""} onClick={()=>go("shop")}><Search/><span>Shop</span></button><button className={page==="cart"?"active":""} onClick={()=>go("cart")}><span className="bottom-cart-icon"><ShoppingBag/>{cartCount>0&&<i>{cartCount}</i>}</span><span>Cart</span></button><button className={page==="profile"?"active":""} onClick={()=>go("profile")}><UserRound/><span>Profile</span></button></nav>
+  <div className="floating-contact" aria-label="Contact KSR Dairy Foods">
+    <a className="float-contact whatsapp" href="https://wa.me/917036373186?text=Namaste%20KSR%20Dairy%20Foods%2C%20I%20want%20to%20know%20about%20your%20products." target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><MessageCircle size={22}/></a>
+    <a className="float-contact call" href="tel:+917036373186" aria-label="Call KSR Dairy Foods"><PhoneCall size={21}/></a>
+    <button className="float-contact install" onClick={installApp} aria-label="Download or install KSR Dairy Foods"><Download size={20}/></button>
+    {user&&<button className={`float-contact push ${pushEnabled?'enabled':''}`} onClick={enablePush} aria-label="Enable website notifications" title={pushEnabled?'Website notifications enabled':'Enable website notifications'}><Bell size={20}/></button>}
+  </div>
+  {toast&&<div className="toast"><CheckCircle2 size={18}/>{toast}</div>}
+  </>;
+}
+export default App;
