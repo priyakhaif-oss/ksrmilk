@@ -63,8 +63,11 @@ Tap **Download App**. On supported Android/desktop browsers this opens the nativ
 ```bash
 npm install
 cp .env.example .env
+# Edit .env and set a real MongoDB Atlas URI and your own admin username/password/secret
 npm run dev
 ```
+
+The development command uses `vercel dev` so `/api/*` endpoints work locally as well as the React site. Admin sign-in will not work with the example placeholder values: edit `.env` and set `MONGODB_URI`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET` first. The admin username/password are the values you choose in `.env`; they are not preset by this project. Do not upload `.env` or share it publicly.
 
 For push notifications, localhost is generally treated as a secure context; on a deployed site use HTTPS. MongoDB Atlas must permit network access from your hosting environment. This project was packaged for deployment, but a live deployment and push delivery cannot be verified until your own Google, MongoDB, VAPID and hosting settings are configured.
 
